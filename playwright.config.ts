@@ -8,6 +8,10 @@ export default defineConfig({
   use: {
     baseURL: process.env.HB_TEST_URL || "http://127.0.0.1:3010",
     channel: process.env.CI ? undefined : "chrome",
+    // CI runners have no physical GPU; use a reproducible software renderer.
+    launchOptions: process.env.CI
+      ? { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] }
+      : undefined,
     viewport: { width: 1280, height: 900 },
     trace: "retain-on-failure",
   },

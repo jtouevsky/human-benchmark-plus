@@ -254,18 +254,24 @@ export default function AdaptiveSpatial({
           </button>
         </div>
       )}
-      <EstimateStrip posterior={p} />
-      <PosteriorView posterior={p} previous={before} />
-      <ModelInspector
-        posterior={p}
-        previous={before}
-        events={events}
-        next={next ?? selection}
-      />
-      <p className="model-caption">
-        Model v1 · heuristic difficulty · no population percentiles. Uncertainty
-        can widen after surprising evidence; it is not forced to shrink.
-      </p>
+      <details className="advanced-analysis">
+        <summary>
+          Advanced analysis <span>Spatial model & uncertainty ↗</span>
+        </summary>
+        <EstimateStrip posterior={p} />
+        <PosteriorView posterior={p} previous={before} />
+        <ModelInspector
+          posterior={p}
+          previous={before}
+          events={events}
+          next={next ?? selection}
+        />
+        <p className="model-caption">
+          Model v1 · heuristic difficulty · no population percentiles.
+          Uncertainty can widen after surprising evidence; it is not forced to
+          shrink.
+        </p>
+      </details>
     </div>
   );
 }

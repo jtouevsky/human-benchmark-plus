@@ -58,6 +58,8 @@ export default function TestEngine(p: Props) {
       aria-modal="true"
       aria-label={t.name}
       className="test-overlay"
+      data-world={p.type}
+      data-active={started}
       initial={{ opacity: 0, scale: 0.87, borderRadius: "80px" }}
       animate={{ opacity: 1, scale: 1, borderRadius: "0px" }}
       exit={{ opacity: 0, scale: 0.94 }}

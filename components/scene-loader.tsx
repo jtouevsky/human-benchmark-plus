@@ -47,6 +47,5 @@ export default function SceneLoader(_props: {
   results: TestResult[];
   light?: boolean;
 }) {
-  const state = useMeasurement();
-  return <PosteriorView posterior={state.posterior} />;
+  return <LegacySceneLoader {..._props} />;
 }

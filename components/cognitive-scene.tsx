@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { profile, TestResult } from "@/lib/model";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { recentFor, tests, TestResult } from "@/lib/model";
 export default function CognitiveScene({
   results,
   light = false,
@@ -15,9 +16,42 @@ export default function CognitiveScene({
     [paused, setPaused] = useState(false),
     [selected, setSelected] = useState<number | null>(null),
     [failure, setFailure] = useState(false);
-  const data = useMemo(() => profile(results), [results]);
+  const data = useMemo(
+    () => [
+      ...tests.map((t) => {
+        const records = recentFor(results, t.id),
+          latest = records.at(-1);
+        return {
+          name: t.name,
+          count: records.length,
+          value: Math.min(100, Math.log2(records.length + 1) * 24),
+          band:
+            t.id === "spatial" && latest?.protocolVersion === 4
+              ? Number(latest.metadata.sd)
+              : 0,
+          display: latest ? `${Math.round(latest.rawScore)} ${t.unit}` : "—",
+          detail: latest
+            ? `${records.length} observations · latest ${Math.round(latest.rawScore)} ${t.unit}${t.id === "spatial" && latest.protocolVersion === 4 ? ` · model SD ${Number(latest.metadata.sd).toFixed(2)}` : " · confidence not calibrated"}`
+            : "No observations yet. Complete this test to add a signal.",
+        };
+      }),
+      ...["Processing speed", "Attention"].map((name) => ({
+        name,
+        count: 0,
+        value: 0,
+        band: 0,
+        display: "—",
+        detail:
+          "No separate measurement model. Not inferred from other scores.",
+      })),
+    ],
+    [results],
+  );
   const selection = useRef(selected);
   selection.current = selected;
+  useEffect(() => {
+    host.current?.dispatchEvent(new Event("atlas-command"));
+  }, [selected, paused]);
   useEffect(() => {
     const el = host.current;
     if (!el) return;
@@ -40,6 +74,12 @@ export default function CognitiveScene({
       camera = new THREE.PerspectiveCamera(38, 1, 0.1, 50);
     camera.position.set(0, 1, 8.4);
     camera.lookAt(0, 0, 0);
+    const pmrem = new THREE.PMREMGenerator(renderer),
+      room = new RoomEnvironment(),
+      env = pmrem.fromScene(room, 0.04);
+    scene.environment = env.texture;
+    room.dispose();
+    pmrem.dispose();
     const group = new THREE.Group();
     scene.add(group);
     group.rotation.set(-0.25, 0.25, -0.1);
@@ -58,7 +98,7 @@ export default function CognitiveScene({
     });
     const points = data.map((d, i) => {
       const a = (i * Math.PI) / 3 - Math.PI / 2,
-        r = d.count ? 0.6 + (Math.min(100, d.value) / 100) * 1.55 : 0.42;
+        r = d.count ? 1.05 + (Math.min(100, d.value) / 100) * 1.1 : 1.0;
       return new THREE.Vector3(
         Math.cos(a) * r,
         Math.sin(a) * r,
@@ -68,10 +108,9 @@ export default function CognitiveScene({
     const meshFor = (band: number) => {
       const ps = data.map((d, i) => {
         const a = (i * Math.PI) / 3 - Math.PI / 2,
-          r = d.count
-            ? 0.6 +
-              (Math.min(100, Math.max(0, d.value + band * d.band)) / 100) * 1.55
-            : 0.42;
+          r =
+            (d.count ? 1.05 + (d.value / 100) * 1.1 : 1.0) +
+            band * d.band * 0.25;
         return new THREE.Vector3(
           Math.cos(a) * r,
           Math.sin(a) * r,
@@ -115,8 +154,8 @@ export default function CognitiveScene({
       meshFor(0),
       new THREE.MeshPhysicalMaterial({
         color: light ? 0x2766ff : 0x5793ff,
-        metalness: 0.2,
-        roughness: 0.18,
+        metalness: 0.8,
+        roughness: 0.12,
         transparent: true,
         opacity: 0.55,
         side: THREE.DoubleSide,
@@ -144,6 +183,25 @@ export default function CognitiveScene({
         }),
       ),
     );
+    // Curved metallic seams follow the measured nodes rather than a fixed logo.
+    const seamMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xc3d4f4,
+      metalness: 1,
+      roughness: 0.2,
+      clearcoat: 1,
+    });
+    points.forEach((a, i) => {
+      const b = points[(i + 1) % points.length];
+      const middle = a.clone().add(b).multiplyScalar(0.62);
+      middle.z += 0.28;
+      const curve = new THREE.CatmullRomCurve3([a, middle, b]);
+      group.add(
+        new THREE.Mesh(
+          new THREE.TubeGeometry(curve, 24, 0.018, 6, false),
+          seamMaterial,
+        ),
+      );
+    });
     for (let ring = 0; ring < 3; ring++) {
       const p = Array.from({ length: 129 }, (_, i) => {
         const a = (i / 128) * Math.PI * 2;
@@ -202,6 +260,7 @@ export default function CognitiveScene({
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      if (!frame) frame = requestAnimationFrame(draw);
     });
     resize.observe(el);
     const visibility = new IntersectionObserver(
@@ -227,7 +286,7 @@ export default function CognitiveScene({
       group.rotation.y += (ty - group.rotation.y) * 0.12;
       if (!drag && !reduced.matches && !commands.current.paused)
         ty += dt * 0.055;
-      scale += (1 - scale) * 0.055;
+      scale += (1 - scale) * (1 - Math.exp(-dt * 8));
       group.scale.setScalar(scale);
       camera.position.z +=
         (Math.max(8.4, (8.4 * 1.25) / camera.aspect) / commands.current.zoom -
@@ -251,14 +310,34 @@ export default function CognitiveScene({
         }
       });
       renderer.render(scene, camera);
-      frame = requestAnimationFrame(draw);
+      el!.dataset.rendered = "true";
+      el!.dataset.rotation = group.rotation.y.toFixed(3);
+      const unsettled =
+        Math.abs(tx - group.rotation.x) +
+          Math.abs(ty - group.rotation.y) +
+          Math.abs(1 - scale) +
+          Math.abs(
+            camera.position.z -
+              Math.max(8.4, (8.4 * 1.25) / camera.aspect) /
+                commands.current.zoom,
+          ) >
+        0.001;
+      if ((!reduced.matches && !commands.current.paused) || drag || unsettled)
+        frame = requestAnimationFrame(draw);
     }
+    const wake = () => {
+      if (active && !document.hidden && !frame)
+        frame = requestAnimationFrame(draw);
+    };
+    el.addEventListener("atlas-command", wake);
+    reduced.addEventListener("change", wake);
     const down = (e: PointerEvent) => {
       drag = true;
       moved = false;
       px = e.clientX;
       py = e.clientY;
       renderer.domElement.setPointerCapture(e.pointerId);
+      wake();
     };
     const move = (e: PointerEvent) => {
       if (drag) {
@@ -269,6 +348,7 @@ export default function CognitiveScene({
         tx = Math.max(-1.3, Math.min(1.3, tx + dy * 0.008));
         px = e.clientX;
         py = e.clientY;
+        wake();
       } else {
         const b = el.getBoundingClientRect();
         mouse.set(
@@ -319,6 +399,7 @@ export default function CognitiveScene({
         if (event.key === "ArrowRight") ty += 0.15;
         if (event.key === "ArrowUp") tx = Math.max(-1.3, tx - 0.15);
         if (event.key === "ArrowDown") tx = Math.min(1.3, tx + 0.15);
+        wake();
       }
     });
     renderer.domElement.addEventListener("pointerdown", down);
@@ -329,6 +410,8 @@ export default function CognitiveScene({
     return () => {
       cancelAnimationFrame(frame);
       resize.disconnect();
+      el.removeEventListener("atlas-command", wake);
+      reduced.removeEventListener("change", wake);
       inertObserver.disconnect();
       visibility.disconnect();
       document.removeEventListener("visibilitychange", visible);
@@ -342,6 +425,7 @@ export default function CognitiveScene({
           materials.forEach((m) => m.dispose());
         }
       });
+      env.dispose();
       renderer.dispose();
     };
   }, [data, light]);
@@ -354,34 +438,39 @@ export default function CognitiveScene({
         aria-label="Interactive 3D cognitive structure"
       >
         <div className="scene-crosshair" aria-hidden="true" />
-        {!failure &&
-          data.map((d, i) => (
-            <button
-              key={d.name}
-              ref={(el) => {
-                labels.current[i] = el;
-              }}
-              className={`scene-label ${selected === i ? "active" : ""}`}
-              onPointerEnter={() => setSelected(i)}
-              onClick={() => setSelected(i)}
-              onFocus={() => setSelected(i)}
-            >
-              {d.name}
-              <small>{d.count ? Math.round(d.value) : "—"}</small>
-            </button>
-          ))}
+        <div className="scene-labels">
+          {!failure &&
+            data.map((d, i) => (
+              <button
+                key={d.name}
+                ref={(el) => {
+                  labels.current[i] = el;
+                }}
+                className={`scene-label ${selected === i ? "active" : ""}`}
+                onPointerEnter={() => setSelected(i)}
+                onClick={() => setSelected(i)}
+                onFocus={() => setSelected(i)}
+              >
+                {d.name}
+                <small>{d.display}</small>
+              </button>
+            ))}
+        </div>
         {failure && (
           <div className="scene-fallback">
             3D is unavailable on this device.
             {data.map((d) => (
               <p key={d.name}>
-                {d.name}: {d.count ? Math.round(d.value) : "Unmeasured"}
+                {d.name}: {d.display}
               </p>
             ))}
           </div>
         )}
       </div>
-      <div className="scene-tools">
+      <div
+        className="scene-tools"
+        onClick={() => host.current?.dispatchEvent(new Event("atlas-command"))}
+      >
         <span>DRAG OR USE ARROW KEYS / SELECT A DIMENSION</span>
         <div>
           <button
@@ -435,9 +524,9 @@ export default function CognitiveScene({
         <span>
           {d
             ? d.count
-              ? `${Math.round(d.value)} estimated percentile · ${d.count} observations · ${d.confidence.toLowerCase()} confidence`
-              : "Complete a core test to measure this dimension."
-            : "Radius = estimated performance. Depth = observation count. Outer wireframe = illustrative uncertainty."}
+              ? `${d.detail}`
+              : d.detail
+            : "Size and depth show observation count, not ability. The spatial outer band scales with model SD; other dimensions have no confidence band. Select a node for its actual score."}
         </span>
       </div>
     </div>

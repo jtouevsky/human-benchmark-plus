@@ -274,6 +274,10 @@ function LabRun({
       aria-modal="true"
       aria-label={spec.name}
       className="test-overlay lab-overlay"
+      data-active={phase !== "intro"}
+      data-world={
+        type === "probability" || type === "randomness" ? "probability" : "lab"
+      }
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}

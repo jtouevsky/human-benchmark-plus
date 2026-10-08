@@ -1,7 +1,8 @@
 "use client";
 import { TestResult } from "@/lib/model";
 import { useDialog } from "./use-dialog";
-import { MeasurementProfile } from "./measurement-panel";
+import { AdvancedAnalysis } from "./profile-world";
+import { LegacySceneLoader } from "./scene-loader";
 export default function MeasurementResult({
   result,
   onProfile,
@@ -45,7 +46,8 @@ export default function MeasurementResult({
             Another spatial session
           </button>
         )}
-        <MeasurementProfile />
+        <LegacySceneLoader results={[result]} />
+        <AdvancedAnalysis />
       </div>
     </div>
   );

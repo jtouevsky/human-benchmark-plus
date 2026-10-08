@@ -14,7 +14,13 @@ import {
   Layers,
   ScanLine,
 } from "lucide-react";
-import { EngineHome } from "@/components/engine-home";
+import {
+  ChromeHome,
+  SceneEnvironment,
+  SceneTransition,
+  Sculpture,
+} from "@/components/visual-world";
+import { AdvancedAnalysis } from "@/components/profile-world";
 import { MeasurementProfile } from "@/components/measurement-panel";
 import { HomeExperience, AmbientScene } from "@/components/experience";
 import Lab from "@/components/lab";
@@ -249,7 +255,8 @@ export default function Home() {
         aria-busy={!ready}
         className={`environment environment-${view.toLowerCase()}`}
       >
-        {!overlay && <AmbientScene mode={view} />}
+        {!overlay && <SceneEnvironment mode={view} />}
+        {!overlay && <SceneTransition scene={view} />}
         <div inert={overlay}>
           <header>
             <a className="brand" href="/" aria-label="Human Benchmark home">
@@ -272,6 +279,26 @@ export default function Home() {
                   aria-current={view === name ? "page" : undefined}
                   key={name}
                   className={view === name ? "selected" : ""}
+                  onPointerMove={(e) => {
+                    if (
+                      e.pointerType !== "mouse" ||
+                      matchMedia("(prefers-reduced-motion: reduce)").matches
+                    )
+                      return;
+                    const r = e.currentTarget.getBoundingClientRect();
+                    e.currentTarget.style.setProperty(
+                      "--nav-x",
+                      `${(e.clientX - r.left - r.width / 2) * 0.1}px`,
+                    );
+                    e.currentTarget.style.setProperty(
+                      "--nav-y",
+                      `${(e.clientY - r.top - r.height / 2) * 0.12}px`,
+                    );
+                  }}
+                  onPointerLeave={(e) => {
+                    e.currentTarget.style.setProperty("--nav-x", "0px");
+                    e.currentTarget.style.setProperty("--nav-y", "0px");
+                  }}
                   onClick={() => setView(name)}
                 >
                   <Icon size={15} />
@@ -307,23 +334,22 @@ export default function Home() {
               key={view}
               initial={{
                 opacity: 0,
-                scale: 0.97,
-                rotateX: 3,
-                filter: "blur(8px)",
+                y: 35,
+                clipPath: "inset(0 0 12% 0)",
               }}
               animate={{
                 opacity: 1,
-                scale: 1,
-                rotateX: 0,
-                filter: "blur(0px)",
+                y: 0,
+                clipPath: "inset(0 0 0% 0)",
               }}
-              exit={{ opacity: 0, scale: 1.025, filter: "blur(5px)" }}
+              exit={{ opacity: 0, y: -20, clipPath: "inset(0 0 100% 0)" }}
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               {view === "Home" ? (
                 <>
-                  <EngineHome
+                  <ChromeHome
                     results={data}
+                    onProfile={() => setView("Profile")}
                     start={start}
                     onSession={() => setSetup(true)}
                     onLab={() => setView("Lab")}
@@ -362,9 +388,12 @@ export default function Home() {
                 />
               ) : (
                 <>
+                  <div className="lab-sculpture">
+                    <Sculpture variant="lab" />
+                  </div>
                   <Lab />
                   <div className="page-content">
-                    <MeasurementProfile start={() => start("spatial")} />
+                    <AdvancedAnalysis />
                   </div>
                 </>
               )}

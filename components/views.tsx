@@ -15,6 +15,7 @@ import {
   Layers,
 } from "lucide-react";
 import Radar from "./radar";
+import ProfileWorld from "./profile-world";
 import { MeasurementProfile } from "./measurement-panel";
 import MeasurementHistory from "./measurement-history";
 import MeasurementResult from "./measurement-result";
@@ -83,14 +84,7 @@ export function Library({
                   </span>
                   <span>
                     {r.length} observations
-                    <small>
-                      {r.length >= 8
-                        ? "MODERATE"
-                        : r.length >= 3
-                          ? "DEVELOPING"
-                          : "EARLY"}{" "}
-                      CONFIDENCE
-                    </small>
+                    <small>SAVED IN THIS PROTOCOL</small>
                   </span>
                 </div>
                 <div className="library-bottom">
@@ -491,7 +485,14 @@ function LegacyHistoryView({
                       animate={{ opacity: 1, y: 0 }}
                     >
                       <span>
-                        Accuracy <b>{Math.round(result.accuracy * 100)}%</b>
+                        Accuracy{" "}
+                        <b>
+                          {result.testType === "reaction"
+                            ? Array.isArray(result.metadata.trials)
+                              ? result.metadata.trials.length
+                              : "—"
+                            : `${Math.round(result.accuracy * 100)}%`}
+                        </b>
                       </span>
                       <span>
                         Mean response{" "}
@@ -678,13 +679,21 @@ function LegacyResults({
                 r="66"
                 pathLength="100"
                 initial={{ strokeDasharray: "0 100" }}
-                animate={{ strokeDasharray: `${result.percentile} 100` }}
+                animate={{ strokeDasharray: `${result.accuracy * 100} 100` }}
                 transition={{ duration: 0.6 }}
               />
             </svg>
             <div>
-              <b>{ordinal(result.percentile)}</b>
-              <span>EST. PERCENTILE</span>
+              <b>
+                {result.testType === "reaction"
+                  ? Array.isArray(result.metadata.trials)
+                    ? result.metadata.trials.length
+                    : "—"
+                  : `${Math.round(result.accuracy * 100)}%`}
+              </b>
+              <span>
+                {result.testType === "reaction" ? "VALID TRIALS" : "ACCURACY"}
+              </span>
             </div>
           </div>
         </div>
@@ -742,7 +751,7 @@ function LegacyResults({
               </b>
             </span>
             <span>
-              Confidence{" "}
+              Sampling history{" "}
               <b>
                 {all.length >= 8
                   ? "Moderate"
@@ -777,8 +786,8 @@ function LegacyResults({
           </button>
         </div>
         <p className="test-footnote">
-          Percentiles are simulated estimates. Your personal history is the more
-          useful comparison.
+          Your own history is the reference. Compare the same protocol and
+          similar difficulty.
         </p>
       </div>
     </motion.div>
@@ -882,45 +891,9 @@ export function Profile(props: {
   start: () => void;
   demo: boolean;
 }) {
-  const standalone = tests.filter((t) => t.id !== "spatial");
-  return (
-    <>
-      <MeasurementProfile start={props.start} />
-      <section
-        className="page-content"
-        aria-label="Standalone test performance"
-      >
-        <div className="eyebrow">
-          {props.demo ? "ILLUSTRATIVE DEMO" : "STANDALONE TEST PERFORMANCE"}
-        </div>
-        <div className="insight-row">
-          {standalone.map((t) => {
-            const records = recentFor(props.results, t.id);
-            const latest = records.at(-1);
-            return (
-              <article key={t.id}>
-                <span className="eyebrow">{t.name}</span>
-                <h3>
-                  {latest
-                    ? `${Math.round(latest.rawScore)} ${t.unit}`
-                    : "No results yet"}
-                </h3>
-                <p>
-                  {records.length} observation{records.length === 1 ? "" : "s"}
-                  {latest ? " · latest result in this protocol" : ""}
-                </p>
-              </article>
-            );
-          })}
-        </div>
-        <p>
-          These tests keep their original scoring. Their results do not update
-          the spatial Bayesian model.
-        </p>
-      </section>
-    </>
-  );
+  return <ProfileWorld {...props} />;
 }
+
 export function Results(props: Parameters<typeof LegacyResults>[0]) {
   return props.result.protocolVersion === 4 &&
     props.result.testType === "spatial" ? (
@@ -931,10 +904,19 @@ export function Results(props: Parameters<typeof LegacyResults>[0]) {
 }
 
 export function HistoryView(props: Parameters<typeof LegacyHistoryView>[0]) {
+  const [advanced, setAdvanced] = useState(false);
   return (
     <>
-      <MeasurementHistory />
       <LegacyHistoryView {...props} />
+      <details
+        className="advanced-analysis"
+        onToggle={(e) => setAdvanced(e.currentTarget.open)}
+      >
+        <summary>
+          Spatial trial history <span>Advanced model timeline ↗</span>
+        </summary>
+        {advanced && <MeasurementHistory />}
+      </details>
     </>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./experience.css";
 import "./measurement.css";
+import "./worlds.css";
 export const metadata: Metadata = {
   title: "Human Benchmark++ — An adaptive measurement experiment",
   description:

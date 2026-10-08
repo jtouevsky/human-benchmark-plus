@@ -52,7 +52,7 @@ npm run dev
 
 Open [localhost:3000](http://localhost:3000). Keep the terminal running while using the app; `Ctrl+C` stops it. If you use nvm, `nvm use` selects the version in `.nvmrc`.
 
-Choose **Start spatial calibration** on Home. After each answer, inspect the updated distribution and open the model inspector to see why the next question was selected. The older demo toggle only affects legacy views; it never feeds the Bayesian model.
+Choose **Start a test** on Home, or select **Spatial reasoning** in Tests. Open **Advanced analysis** to inspect the updated distribution and the model inspector after each spatial answer. The older demo toggle only affects legacy views; it never feeds the Bayesian model.
 
 ```bash
 npm test           # Measurement math, seeded generators, and persistence
