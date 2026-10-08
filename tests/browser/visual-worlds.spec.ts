@@ -62,6 +62,7 @@ test("3D atlas shows actual scores, supports inspection and replays without chan
     record,
   );
   await page.reload();
+  await expect(page.locator("main")).toHaveAttribute("aria-busy", "false");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
   const stage = page.locator(".profile-world .scene-stage");
   await stage.scrollIntoViewIfNeeded();

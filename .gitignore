@@ -76,3 +76,6 @@ Desktop.ini
 # Browser regression artifacts
 test-results/
 playwright-report/
+
+# Reviewed public showcase video
+!docs/assets/walkthrough.mp4

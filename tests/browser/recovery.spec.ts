@@ -196,6 +196,7 @@ for (const type of Object.keys(names) as (keyof typeof names)[])
     await page.getByRole("button", { name: "Exit test", exact: true }).click();
     await expect(page.locator(".test-overlay")).toHaveCount(0);
     await page.reload();
+    await expect(page.locator("main")).toHaveAttribute("aria-busy", "false");
     await page.getByRole("button", { name: "History", exact: true }).click();
     await expect(page.locator(".history-row")).toContainText(names[type]);
     expect(
@@ -360,6 +361,7 @@ for (const type of Object.keys(labNames) as (keyof typeof labNames)[])
     await dialog.getByRole("button", { name: "Exit Lab" }).click();
     await expect(page.locator(".test-overlay")).toHaveCount(0);
     await page.reload();
+    await expect(page.locator("main")).toHaveAttribute("aria-busy", "false");
     await page.getByRole("button", { name: "Lab", exact: true }).click();
     await expect(page.locator(".lab-log")).toContainText(labNames[type]);
     expect(
@@ -392,6 +394,7 @@ test("full mixed-protocol session supports save/resume, completion and archived 
         .getByRole("button", { name: "Save & exit", exact: true })
         .click();
       await page.reload();
+      await expect(page.locator("main")).toHaveAttribute("aria-busy", "false");
       await page
         .getByRole("button", { name: "Resume session", exact: false })
         .click();
@@ -419,6 +422,7 @@ test("full mixed-protocol session supports save/resume, completion and archived 
   ).toBeNull();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.reload();
+  await expect(page.locator("main")).toHaveAttribute("aria-busy", "false");
   await page.getByRole("button", { name: "History", exact: true }).click();
   await page
     .getByRole("button", { name: "View summary", exact: false })
@@ -448,6 +452,7 @@ test("existing non-spatial history is visible in Profile without becoming Bayesi
     record,
   );
   await page.reload();
+  await expect(page.locator("main")).toHaveAttribute("aria-busy", "false");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
   await expect(
     page.getByRole("region", { name: "Standalone test performance" }),

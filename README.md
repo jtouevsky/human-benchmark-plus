@@ -1,47 +1,95 @@
 # Human Benchmark++
 
-An adaptive cognitive measurement experiment: answer a spatial question, watch a Bayesian posterior change, and let information gain choose the next task.
+A browser-based cognitive testing lab with Bayesian spatial measurement, procedural 3D tasks, and an interactive performance atlas.
 
-[![Checks](https://github.com/jtouevsky/human-benchmark-plus/actions/workflows/ci.yml/badge.svg)](https://github.com/jtouevsky/human-benchmark-plus/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+The engineering question behind this project is simple: **which task should come next, and what did the last answer actually tell us?** The spatial test maintains a probability distribution over performance and selects questions by expected information gain. Reaction, memory, and math tests contribute separate measurements in their original units.
 
-![Adaptive measurement home and live prior](docs/images/measurement-home.png)
+[![Real application walkthrough: chrome homepage, spatial test, results, profile and posterior](docs/assets/preview.gif)](docs/assets/walkthrough.mp4)
 
-## From scores to evidence
+[Watch the 26-second MP4](docs/assets/walkthrough.mp4) · [Mathematics](docs/mathematics.md) · [Architecture](docs/architecture.md) · [Experiments](docs/experiments.md) · [Visualization](docs/visualization.md)
 
-Spatial reasoning now runs on a Bayesian measurement engine. Each answer updates a distribution over latent ability, including its uncertainty. The next question is selected by expected entropy reduction across a pool of generated tasks.
+*Recorded from the running application at 1440 × 900 in a fresh browser profile. Automated responses complete a real spatial session; idle time and intermediate trials are cut. These are demonstration results, not a person's assessment.*
 
-The 3D surface is drawn from the same posterior used by the selector. You can rotate it, inspect density values, replay earlier observations, and export the underlying trial records. Five other dimensions remain explicitly unmeasured. The other tests still run their existing protocols.
+## What you can try
 
-[Read the model, equations, assumptions, and limitations](docs/measurement.md).
+- **Four core tests:** reaction time, visual memory, mental math, and spatial reasoning. Tests have complete result, retry, and history flows; mixed sessions can resume between completed tests.
+- **Adaptive spatial measurement:** seeded block assemblies, rotational and reflected distractors, per-answer Bayesian updates, and selection from ten fresh candidates.
+- **A performance atlas:** rotate a 3D profile, inspect raw scores, and scrub through saved results. Observation count controls node size; spatial uncertainty has its own band.
+- **An experimental Lab:** time perception, visual search, change blindness, probability intuition, randomness detection, and multi-object tracking.
+- **Local records:** versioned results and replayable spatial observations live in the browser. No account, backend, or API key is required.
 
-## Inside the app
+The Bayesian model currently measures **spatial task performance only**. The six-axis visual layout is not a fitted multidimensional intelligence model. This is an exploratory project, not an IQ test or medical diagnostic tool.
 
-| Core test | What happens |
+## From an answer to the next question
+
+The model stores probability mass on 241 ability values from −6 to 6. Its prior approximates a truncated normal distribution with mean 0 and standard deviation 1.5. A multiple-choice task has difficulty $b$, discrimination $a=1$, and guessing floor $c=1/K$ for $K$ answer choices:
+
+$$p(\theta,t)=c+(1-c)\frac{1}{1+e^{-a(\theta-b)}}.$$
+
+A correct answer favors values of $\theta$ that predict success; an incorrect answer favors values that predict failure. For response $r\in\{0,1\}$, grid weights update as
+
+$$w_i' \propto w_i\,p(\theta_i,t)^r[1-p(\theta_i,t)]^{1-r}.$$
+
+The implementation normalizes in log space and reports the posterior mean, standard deviation, and equal-tail 95% credible interval. Response time is recorded, but does not enter this likelihood.
+
+A fixed progression can waste trials on questions that tell us little. Here, each candidate is evaluated under **both possible responses**. The selector chooses the largest expected reduction in entropy:
+
+$$\operatorname{EIG}(t)=H(w)-q_t H(w^{(1)})-(1-q_t)H(w^{(0)}),\qquad q_t=\sum_i w_i p(\theta_i,t).$$
+
+This is an exact sum over the grid and binary outcomes. The search covers one newly generated question at each of ten levels, not every possible spatial task. Difficulty comes from an explicit geometry-based heuristic, not a calibrated item bank. [Model details and assumptions →](docs/mathematics.md)
+
+## Where the code gets interesting
+
+```mermaid
+flowchart LR
+  G[Seeded geometry generator] --> T[Spatial task adapter]
+  T --> S[Expected information gain selector]
+  P[Grid posterior] --> S
+  S --> U[Spatial test UI]
+  U --> O[Response observation]
+  O --> B[Bayesian update]
+  B --> P
+  O --> E[Validated local event archive]
+  E --> R[Replay and model analysis]
+  U --> C[Completed test record]
+  C --> A[History and profile atlas]
+  R --> V[Posterior charts and 3D density]
+```
+
+The numerical engine in [`lib/measurement/model.ts`](lib/measurement/model.ts) has no React or browser dependencies. [`lib/tasks/spatial.ts`](lib/tasks/spatial.ts) connects it to generated geometry. [`lib/experimental-data/store.ts`](lib/experimental-data/store.ts) regenerates tasks and checks posterior history when loading observations. UI components consume those results instead of implementing a second model.
+
+Three implementation decisions shape the project:
+
+1. **Reproducible geometry.** Task IDs retain level and seed. Distractors are checked against all 24 proper cube rotations, making a rotated match distinct from a reflection. Generator versions matter for historical replay.
+2. **Inspectable evidence.** Each spatial observation stores its response, before/after estimates, predicted correctness, and selection information. Invalid archives are reported and preserved rather than silently reset.
+3. **Separate measurements from presentation.** The posterior surface renders actual density. The atlas shows observation coverage and raw scores. The liquid-metal homepage is decorative, with no statistical meaning attached to its motion.
+
+[Module map, storage boundaries, and failure behavior →](docs/architecture.md)
+
+## Mathematics on screen
+
+| View | What drives it |
 | --- | --- |
-| Reaction time | Catch a signal after a random delay. Seven valid trials produce a median, fastest time, and variability summary. |
-| Visual memory | Recall patterns on grids that grow from 4×4 to 7×7 as difficulty increases. |
-| Mental math | Work through ten adaptive rounds of arithmetic, fractions, percentages, and estimation. |
-| Spatial reasoning | Match 3D assemblies while Bayesian updates and information gain guide the next question. |
+| Spatial task | Expected information gain selects the actual next generated question. |
+| Posterior surface | Horizontal position is ability; height is grid mass divided by grid spacing, scaled to fit. Depth is an extrusion, not another variable. |
+| Estimate and interval | Computed mean, standard deviation, and equal-tail grid quantiles. |
+| Profile atlas | Node size and depth reflect saved result counts. The spatial outer band scales with model SD. |
+| History scrubber | A prefix of completed results, with comparisons within the same test protocol. |
+| Chrome sculpture | Procedural mesh deformation, environment reflections, pointer and scroll input. Decorative. |
 
-The **Lab** adds six shorter experiments: time perception, visual search, change blindness, probability intuition, randomness detection, and multi-object tracking. Its results stay separate from the core profile.
+The rendering uses Three.js directly, including a material shader hook for the density surface, animated SVG, and Framer Motion. Reduced-motion settings and a non-WebGL fallback keep the numerical analysis accessible. [Exact visual mappings →](docs/visualization.md)
 
-<table>
-  <tr>
-    <td width="50%"><a href="docs/images/measurement-profile.png"><img src="docs/images/measurement-profile.png" alt="Six marginal ability distributions with the live spatial posterior" /></a></td>
-    <td width="50%"><a href="docs/images/measurement-update.png"><img src="docs/images/measurement-update.png" alt="Spatial trial feedback and the computed posterior update" /></a></td>
-  </tr>
-  <tr>
-    <td><strong>Profile</strong> · Explore dimensions and repeated observations.</td>
-    <td><strong>Bayesian update</strong> · See the effect of an actual answer.</td>
-  </tr>
-</table>
+## Validation
 
-Screenshots show an empty prior and synthetic QA responses, not personal test history. Open any image to see it at full size.
+The reproducible synthetic experiment runs **40 simulated users × 120 trials**, with known abilities between −2 and 2. The current run gives **0.188 mean absolute error** in model units and **39/40 coverage** of nominal 95% credible intervals.
 
-## Run it locally
+These users answer according to the same likelihood the estimator assumes. The experiment checks implementation and model recovery; it does not establish human reliability, calibrated task difficulty, or an advantage over a fixed test.
 
-You'll need **Node.js 24** and npm. No account, API key, or database is required.
+Unit tests cover normalization, update direction, an independent mutual-information identity, extreme response sequences, seeded task generation, event replay, and archive preservation. Browser regressions exercise full test completion, persistence, retry, mobile layouts, and interactive rendering. [Reproduce the results and inspect CI findings →](docs/experiments.md)
+
+## Run locally
+
+Use Node.js 24 and npm. No environment configuration is needed; [`.env.example`](.env.example) explains the convention for future integrations.
 
 ```bash
 git clone https://github.com/jtouevsky/human-benchmark-plus.git
@@ -50,61 +98,40 @@ npm ci
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). Keep the terminal running while using the app; `Ctrl+C` stops it. If you use nvm, `nvm use` selects the version in `.nvmrc`.
-
-Choose **Start a test** on Home, or select **Spatial reasoning** in Tests. Open **Advanced analysis** to inspect the updated distribution and the model inspector after each spatial answer. The older demo toggle only affects legacy views; it never feeds the Bayesian model.
+Open the **Local** URL printed by the server, normally [localhost:3000](http://localhost:3000). If that port is occupied, Next.js prints a different one. Keep the terminal running; press Ctrl+C to stop it.
 
 ```bash
-npm test           # Measurement math, seeded generators, and persistence
-npm run simulate   # Recover known abilities from synthetic responses
-npm run build      # Type-check and export the static site to out/
-npm run typecheck  # Standalone TypeScript check
-npm run lint       # Source checks
-npm run test:browser # Chrome: all core/Lab flows, sessions, and history
+npm run lint
+npm test
+npm run simulate
+npm run build
+npm run typecheck
 ```
 
-Browser tests start their own development server on port 3010. To test an already running app, use `HB_TEST_URL=http://localhost:3000 npm run test:browser`. Local tests use installed Google Chrome; CI installs Chromium. The launch checks assert rendered opacity as well as visibility to catch blank test screens.
+The production build is a static export in `out/`. To preview it with Python 3:
 
-The production output can be served by a static host. Development and production have separate build caches. `.env.example` explains how to handle keys if a server-side integration is added later.
-
-## A few implementation details
-
-**Making spatial questions unambiguous.** A shape can look different and still be the same assembly. The [3D generator](lib/spatial.ts) checks all 24 proper cube orientations using translation-normalized coordinates. Reflections and structural changes are treated separately. [Seeded tests](tests/adaptive.cjs) check 300 generated 3D questions across the difficulty range, alongside the original 2D generator.
-
-**Updating beliefs and selecting tasks.** The [measurement layer](lib/measurement/model.ts) keeps a normalized posterior on a 241-point grid and computes exact expected entropy reduction for each candidate. [Trial events](lib/experimental-data/store.ts) can reconstruct the complete sequence of beliefs. Difficulty coefficients are currently heuristic.
-
-**Keeping old results comparable.** Changing a test changes what its scores mean. Results carry protocol versions, so the harder 3D task doesn't silently inherit a baseline from the original spatial test. [Validation and profile logic](lib/model.ts) derive the current view from saved observations rather than storing another copy of the same scores.
-
-**Handling timing and interruptions.** The [test engine](components/test-engine.tsx) uses `performance.now()` and a synchronous stimulus update for reaction trials, independently of decorative animation. False starts are handled separately. Other tasks pause hidden-tab time or restart an interrupted stimulus. Input-device and browser latency still affect measurements.
-
-**Drawing the actual posterior.** The [Three.js surface](components/posterior-scene.tsx) updates its vertices from probability density. A moving shader highlight and procedural lighting give it a metallic surface. Keyboard controls, a 2D trace, reduced motion, and a WebGL fallback keep the data accessible.
-
-## Stack and layout
-
-Next.js 15 · React 19 · TypeScript · Three.js · Framer Motion · CSS / Tailwind CSS 4 tooling
-
-```text
-app/          Pages, layout, and styles
-components/   Test interfaces, charts, motion, and 3D scenes
-lib/measurement/       Posterior, likelihood, information gain, simulation
-lib/tasks/             Spatial parameters and difficulty estimation
-lib/experimental-data/ Validated trial events and replay
-lib/                   Existing generators and legacy models
-tests/        Deterministic correctness checks
-docs/images/  Reviewed screenshots for this README
-public/       Static assets
+```bash
+python3 -m http.server 3011 --bind 127.0.0.1 --directory out
 ```
 
-Results live in browser `localStorage`. There is no backend, and different browsers have separate histories. Clearing browser storage removes that browser's results. Dependencies are pinned by `package-lock.json`; GitHub Actions runs the tests and production build on pushes to `main` and pull requests.
+For browser tests, install Google Chrome locally and run `npm run test:browser`. The test runner starts its own development server on port 3010. To test the production preview instead:
+
+```bash
+HB_TEST_URL=http://127.0.0.1:3011 npm run test:browser
+```
+
+CI installs Playwright Chromium and uses software WebGL. Run builds and type checking sequentially because Next.js generates type files during a build.
+
+## Stack
+
+Next.js 15 static export · React 19 · TypeScript · Three.js · Framer Motion · CSS and Tailwind tooling · browser localStorage · Node test runner · Playwright · GitHub Actions.
+
+The inference and information-gain calculations are implemented in TypeScript without an external statistics service.
 
 ## Limits and next steps
 
-This is a portfolio experiment, not a validated cognitive assessment. The spatial credible intervals are real Bayesian calculations conditional on an uncalibrated response model. Legacy percentiles remain illustrative. There is no IQ score or diagnosis.
+Difficulty coefficients still need empirical calibration. The model assumes a fixed scalar ability and conditionally independent responses; learning, fatigue, and device effects can violate that assumption. There is no population norm dataset. Reaction times include browser and hardware latency. Browser storage is local, quota-limited, and not a backup service.
 
-The next technical step is empirical item calibration and model-mismatch testing. A 40-user synthetic recovery run currently has mean absolute error 0.188 θ after 120 trials per user. This does not establish validity for real users. Other dimensions, multidimensional correlations, and response-time models are not implemented.
+The next useful work is to collect consented item-level data, evaluate calibration and repeat-session reliability, compare selection policies under model mismatch, and version any new fitted parameters. Additional Bayesian dimensions and cross-device sync remain future work.
 
-Development included AI-assisted coding. The implementation and tests are available here for review.
-
-## License
-
-[MIT](LICENSE). Third-party dependencies retain their own licenses.
+[MIT license](LICENSE). Built with AI-assisted development; the model's scope, assumptions, and reproducible checks are documented here so its claims can be inspected.

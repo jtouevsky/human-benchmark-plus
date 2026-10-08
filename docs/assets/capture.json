@@ -1,0 +1,55 @@
+{
+  "viewport": [
+    1440,
+    900
+  ],
+  "clips": [
+    {
+      "name": "home",
+      "start": 2.512,
+      "duration": 4
+    },
+    {
+      "name": "tests",
+      "start": 7.552,
+      "duration": 2
+    },
+    {
+      "name": "spatial",
+      "start": 10.81,
+      "duration": 4
+    },
+    {
+      "name": "evidence",
+      "start": 14.976,
+      "duration": 2
+    },
+    {
+      "name": "result",
+      "start": 24.672,
+      "duration": 3
+    },
+    {
+      "name": "profile",
+      "start": 28.804,
+      "duration": 4
+    },
+    {
+      "name": "posterior",
+      "start": 34.92,
+      "duration": 4
+    },
+    {
+      "name": "lab",
+      "start": 40.029,
+      "duration": 3
+    }
+  ],
+  "counts": {
+    "results": 1,
+    "trials": 10
+  },
+  "errors": [],
+  "sourceCommit": "9d2b61016b9fe38937f361c89966f8ba3604a20a",
+  "provenance": "Real production export; isolated browser; automated UI submissions; intermediate trials trimmed."
+}
