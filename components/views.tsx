@@ -882,7 +882,44 @@ export function Profile(props: {
   start: () => void;
   demo: boolean;
 }) {
-  return <MeasurementProfile start={props.start} />;
+  const standalone = tests.filter((t) => t.id !== "spatial");
+  return (
+    <>
+      <MeasurementProfile start={props.start} />
+      <section
+        className="page-content"
+        aria-label="Standalone test performance"
+      >
+        <div className="eyebrow">
+          {props.demo ? "ILLUSTRATIVE DEMO" : "STANDALONE TEST PERFORMANCE"}
+        </div>
+        <div className="insight-row">
+          {standalone.map((t) => {
+            const records = recentFor(props.results, t.id);
+            const latest = records.at(-1);
+            return (
+              <article key={t.id}>
+                <span className="eyebrow">{t.name}</span>
+                <h3>
+                  {latest
+                    ? `${Math.round(latest.rawScore)} ${t.unit}`
+                    : "No results yet"}
+                </h3>
+                <p>
+                  {records.length} observation{records.length === 1 ? "" : "s"}
+                  {latest ? " · latest result in this protocol" : ""}
+                </p>
+              </article>
+            );
+          })}
+        </div>
+        <p>
+          These tests keep their original scoring. Their results do not update
+          the spatial Bayesian model.
+        </p>
+      </section>
+    </>
+  );
 }
 export function Results(props: Parameters<typeof LegacyResults>[0]) {
   return props.result.protocolVersion === 4 &&

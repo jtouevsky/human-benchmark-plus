@@ -72,3 +72,7 @@ Desktop.ini
 .vscode/
 *.swp
 *.swo
+
+# Browser regression artifacts
+test-results/
+playwright-report/

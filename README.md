@@ -59,7 +59,11 @@ npm test           # Measurement math, seeded generators, and persistence
 npm run simulate   # Recover known abilities from synthetic responses
 npm run build      # Type-check and export the static site to out/
 npm run typecheck  # Standalone TypeScript check
+npm run lint       # Source checks
+npm run test:browser # Chrome: all core/Lab flows, sessions, and history
 ```
+
+Browser tests start their own development server on port 3010. To test an already running app, use `HB_TEST_URL=http://localhost:3000 npm run test:browser`. Local tests use installed Google Chrome; CI installs Chromium. The launch checks assert rendered opacity as well as visibility to catch blank test screens.
 
 The production output can be served by a static host. Development and production have separate build caches. `.env.example` explains how to handle keys if a server-side integration is added later.
 

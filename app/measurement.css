@@ -547,7 +547,7 @@ body[data-timing="true"] .ambient-scene,
 body[data-timing="true"] .instrument-button:before {
   display: none;
 }
-body[data-timing="true"] *,
+/* Pause the background only; test reveal animations must reach opacity: 1. */
 body:has(.test-overlay) main [inert] * {
   animation-play-state: paused !important;
 }

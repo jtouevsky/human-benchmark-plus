@@ -40,6 +40,7 @@ import {
   validateResult,
 } from "@/lib/model";
 import { startingLevel } from "@/lib/adaptive";
+import { appendRecord } from "@/lib/record-archive";
 const STORAGE = "hb-results-v1",
   PENDING = "hb-session-v2";
 export default function Home() {
@@ -197,11 +198,15 @@ export default function Home() {
             },
           }
         : raw;
-    setResults((old) => {
-      const next = [...old, r];
-      persist(STORAGE, next);
-      return next;
-    });
+    try {
+      const next = appendRecord(localStorage.getItem(STORAGE), r);
+      localStorage.setItem(STORAGE, JSON.stringify(next));
+      setResults(next.filter(validateResult));
+    } catch {
+      // Keep an unreadable archive intact and retain this result in memory.
+      setStorageError(true);
+      setResults((old) => [...old, r]);
+    }
     if (inSession && session) {
       const next = {
         ...session,

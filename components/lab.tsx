@@ -16,6 +16,7 @@ import {
 import { shuffled } from "@/lib/adaptive";
 import { mean } from "@/lib/model";
 import { useDialog } from "./use-dialog";
+import { appendRecord } from "@/lib/record-archive";
 const STORE = "hb-lab-v1";
 export default function Lab() {
   const [active, setActive] = useState<LabId | null>(null),
@@ -30,15 +31,14 @@ export default function Lab() {
     }
   }, []);
   const save = (r: LabResult) => {
-    setRecords((old) => {
-      const next = [...old, r];
-      try {
-        localStorage.setItem(STORE, JSON.stringify(next));
-      } catch {
-        setError(true);
-      }
-      return next;
-    });
+    try {
+      const next = appendRecord(localStorage.getItem(STORE), r);
+      localStorage.setItem(STORE, JSON.stringify(next));
+      setRecords(next.filter(validLabResult));
+    } catch {
+      setError(true);
+      setRecords((old) => [...old, r]);
+    }
   };
   return (
     <>
