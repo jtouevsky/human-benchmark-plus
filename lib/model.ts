@@ -135,6 +135,8 @@ export const dimensions = [
   "Attention",
 ];
 export function profile(results: TestResult[]) {
+  // Bayesian spatial records have no legacy normalized score or percentile.
+  results = results.filter((r) => r.protocolVersion !== 4);
   return dimensions.map((name, i) => {
     const types: TestType[][] = [
       ["reaction"],

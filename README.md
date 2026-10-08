@@ -1,17 +1,19 @@
 # Human Benchmark++
 
-A browser-based collection of cognitive tests, with adaptive difficulty, a 3D performance profile, and history that stays on your device.
+An adaptive cognitive measurement experiment: answer a spatial question, watch a Bayesian posterior change, and let information gain choose the next task.
 
 [![Checks](https://github.com/jtouevsky/human-benchmark-plus/actions/workflows/ci.yml/badge.svg)](https://github.com/jtouevsky/human-benchmark-plus/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-![Home screen with the interactive 3D cognitive profile](docs/images/home.png)
+![Adaptive measurement home and live prior](docs/images/measurement-home.png)
 
-## The idea
+## From scores to evidence
 
-A reaction-time score is easy to understand. A picture of how your results change over several sessions is harder to build. This project explores that second part: repeat a test, keep the observations, and make the differences visible.
+Spatial reasoning now runs on a Bayesian measurement engine. Each answer updates a distribution over latent ability, including its uncertainty. The next question is selected by expected entropy reduction across a pool of generated tasks.
 
-The interface is also an experiment. You can rotate the profile, inspect its dimensions, and move through a scroll-driven test gallery. The standard results and charts are still there when you want the numbers.
+The 3D surface is drawn from the same posterior used by the selector. You can rotate it, inspect density values, replay earlier observations, and export the underlying trial records. Five other dimensions remain explicitly unmeasured. The other tests still run their existing protocols.
+
+[Read the model, equations, assumptions, and limitations](docs/measurement.md).
 
 ## Inside the app
 
@@ -20,22 +22,22 @@ The interface is also an experiment. You can rotate the profile, inspect its dim
 | Reaction time | Catch a signal after a random delay. Seven valid trials produce a median, fastest time, and variability summary. |
 | Visual memory | Recall patterns on grids that grow from 4×4 to 7×7 as difficulty increases. |
 | Mental math | Work through ten adaptive rounds of arithmetic, fractions, percentages, and estimation. |
-| Spatial reasoning | Match 3D block assemblies across rotations, with mirrored and altered shapes as distractors. |
+| Spatial reasoning | Match 3D assemblies while Bayesian updates and information gain guide the next question. |
 
 The **Lab** adds six shorter experiments: time perception, visual search, change blindness, probability intuition, randomness detection, and multi-object tracking. Its results stay separate from the core profile.
 
 <table>
   <tr>
-    <td width="50%"><a href="docs/images/profile.png"><img src="docs/images/profile.png" alt="Dark profile screen with a 3D visualization and dimension scores" /></a></td>
-    <td width="50%"><a href="docs/images/lab.png"><img src="docs/images/lab.png" alt="Blue experimental Lab screen with its study collection" /></a></td>
+    <td width="50%"><a href="docs/images/measurement-profile.png"><img src="docs/images/measurement-profile.png" alt="Six marginal ability distributions with the live spatial posterior" /></a></td>
+    <td width="50%"><a href="docs/images/measurement-update.png"><img src="docs/images/measurement-update.png" alt="Spatial trial feedback and the computed posterior update" /></a></td>
   </tr>
   <tr>
     <td><strong>Profile</strong> · Explore dimensions and repeated observations.</td>
-    <td><strong>Lab</strong> · Short experiments in perception and attention.</td>
+    <td><strong>Bayesian update</strong> · See the effect of an actual answer.</td>
   </tr>
 </table>
 
-Screenshots use the app's generated demo profile. They contain no personal test history. Open any image to see it at full size.
+Screenshots show an empty prior and synthetic QA responses, not personal test history. Open any image to see it at full size.
 
 ## Run it locally
 
@@ -50,10 +52,11 @@ npm run dev
 
 Open [localhost:3000](http://localhost:3000). Keep the terminal running while using the app; `Ctrl+C` stops it. If you use nvm, `nvm use` selects the version in `.nvmrc`.
 
-To see a populated profile without completing a session, choose **Explore a demo profile** in the footer.
+Choose **Start spatial calibration** on Home. After each answer, inspect the updated distribution and open the model inspector to see why the next question was selected. The older demo toggle only affects legacy views; it never feeds the Bayesian model.
 
 ```bash
-npm test           # Seeded generator, scoring, and persistence checks
+npm test           # Measurement math, seeded generators, and persistence
+npm run simulate   # Recover known abilities from synthetic responses
 npm run build      # Type-check and export the static site to out/
 npm run typecheck  # Standalone TypeScript check
 ```
@@ -64,11 +67,13 @@ The production output can be served by a static host. Development and production
 
 **Making spatial questions unambiguous.** A shape can look different and still be the same assembly. The [3D generator](lib/spatial.ts) checks all 24 proper cube orientations using translation-normalized coordinates. Reflections and structural changes are treated separately. [Seeded tests](tests/adaptive.cjs) check 300 generated 3D questions across the difficulty range, alongside the original 2D generator.
 
+**Updating beliefs and selecting tasks.** The [measurement layer](lib/measurement/model.ts) keeps a normalized posterior on a 241-point grid and computes exact expected entropy reduction for each candidate. [Trial events](lib/experimental-data/store.ts) can reconstruct the complete sequence of beliefs. Difficulty coefficients are currently heuristic.
+
 **Keeping old results comparable.** Changing a test changes what its scores mean. Results carry protocol versions, so the harder 3D task doesn't silently inherit a baseline from the original spatial test. [Validation and profile logic](lib/model.ts) derive the current view from saved observations rather than storing another copy of the same scores.
 
-**Handling timing and interruptions.** The [test engine](components/test-engine.tsx) uses `performance.now()` and animation-frame scheduling for reaction trials. False starts are handled separately. Other tasks pause hidden-tab time or restart an interrupted stimulus. Input-device and browser latency still affect measurements.
+**Handling timing and interruptions.** The [test engine](components/test-engine.tsx) uses `performance.now()` and a synchronous stimulus update for reaction trials, independently of decorative animation. False starts are handled separately. Other tasks pause hidden-tab time or restart an interrupted stimulus. Input-device and browser latency still affect measurements.
 
-**Keeping the 3D view practical.** The [scene](components/cognitive-scene.tsx) loads near the viewport and pauses when offscreen or in a hidden tab. It supports pointer and keyboard controls, uses a lower pixel-density cap on mobile, and falls back to readable values when WebGL is unavailable. Profile radius reflects estimated performance; depth reflects observation count.
+**Drawing the actual posterior.** The [Three.js surface](components/posterior-scene.tsx) updates its vertices from probability density. A moving shader highlight and procedural lighting give it a metallic surface. Keyboard controls, a 2D trace, reduced motion, and a WebGL fallback keep the data accessible.
 
 ## Stack and layout
 
@@ -77,7 +82,10 @@ Next.js 15 · React 19 · TypeScript · Three.js · Framer Motion · CSS / Tailw
 ```text
 app/          Pages, layout, and styles
 components/   Test interfaces, charts, motion, and 3D scenes
-lib/          Generators, scoring, validation, and data models
+lib/measurement/       Posterior, likelihood, information gain, simulation
+lib/tasks/             Spatial parameters and difficulty estimation
+lib/experimental-data/ Validated trial events and replay
+lib/                   Existing generators and legacy models
 tests/        Deterministic correctness checks
 docs/images/  Reviewed screenshots for this README
 public/       Static assets
@@ -87,9 +95,9 @@ Results live in browser `localStorage`. There is no backend, and different brows
 
 ## Limits and next steps
 
-This is a portfolio experiment, not a validated cognitive assessment. Percentiles and uncertainty bands are illustrative. Processing and attention are derived proxies, and the app doesn't provide an IQ score or diagnosis.
+This is a portfolio experiment, not a validated cognitive assessment. The spatial credible intervals are real Bayesian calculations conditional on an uncalibrated response model. Legacy percentiles remain illustrative. There is no IQ score or diagnosis.
 
-Next, I'd like to expand browser and accessibility coverage, measure rendering performance across devices, and add replayable test batteries. Dual-task interference and Pattern Lab are still concepts. Population comparisons would need properly collected calibration data.
+The next technical step is empirical item calibration and model-mismatch testing. A 40-user synthetic recovery run currently has mean absolute error 0.188 θ after 120 trials per user. This does not establish validity for real users. Other dimensions, multidimensional correlations, and response-time models are not implemented.
 
 Development included AI-assisted coding. The implementation and tests are available here for review.
 

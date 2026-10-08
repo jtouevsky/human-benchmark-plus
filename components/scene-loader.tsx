@@ -1,5 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useMeasurement } from "./use-measurement";
+import { PosteriorView } from "./measurement-panel";
 import { useEffect, useRef, useState } from "react";
 import { TestResult } from "@/lib/model";
 const Scene = dynamic(() => import("./cognitive-scene"), {
@@ -11,7 +13,7 @@ const Scene = dynamic(() => import("./cognitive-scene"), {
     </div>
   ),
 });
-export default function SceneLoader(props: {
+export function LegacySceneLoader(props: {
   results: TestResult[];
   light?: boolean;
 }) {
@@ -39,4 +41,12 @@ export default function SceneLoader(props: {
       )}
     </div>
   );
+}
+
+export default function SceneLoader(_props: {
+  results: TestResult[];
+  light?: boolean;
+}) {
+  const state = useMeasurement();
+  return <PosteriorView posterior={state.posterior} />;
 }

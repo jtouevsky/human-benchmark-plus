@@ -1,10 +1,10 @@
 "use client";
+import { useClientReducedMotion as useReducedMotion } from "./use-client-reduced-motion";
 import { useRef, useState, useEffect, useId } from "react";
 import {
   motion,
   useScroll,
   useTransform,
-  useReducedMotion,
   useMotionValue,
   useSpring,
 } from "framer-motion";

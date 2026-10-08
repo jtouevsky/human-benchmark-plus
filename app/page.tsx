@@ -14,6 +14,8 @@ import {
   Layers,
   ScanLine,
 } from "lucide-react";
+import { EngineHome } from "@/components/engine-home";
+import { MeasurementProfile } from "@/components/measurement-panel";
 import { HomeExperience, AmbientScene } from "@/components/experience";
 import Lab from "@/components/lab";
 import { Progression } from "@/components/field-system";
@@ -242,7 +244,7 @@ export default function Home() {
         aria-busy={!ready}
         className={`environment environment-${view.toLowerCase()}`}
       >
-        <AmbientScene mode={view} />
+        {!overlay && <AmbientScene mode={view} />}
         <div inert={overlay}>
           <header>
             <a className="brand" href="/" aria-label="Human Benchmark home">
@@ -250,7 +252,7 @@ export default function Home() {
               <span>
                 human<span className="brand-light">benchmark</span>
                 <sup>++</sup>
-                <small>COGNITIVE PERFORMANCE LAB</small>
+                <small>ADAPTIVE MEASUREMENT ENGINE</small>
               </span>
             </a>
             <nav className="nav" aria-label="Main navigation">
@@ -315,7 +317,7 @@ export default function Home() {
             >
               {view === "Home" ? (
                 <>
-                  <HomeExperience
+                  <EngineHome
                     results={data}
                     start={start}
                     onSession={() => setSetup(true)}
@@ -341,7 +343,7 @@ export default function Home() {
               ) : view === "Profile" ? (
                 <Profile
                   results={data}
-                  start={() => setSetup(true)}
+                  start={() => start("spatial")}
                   demo={demo}
                 />
               ) : view === "History" ? (
@@ -354,7 +356,12 @@ export default function Home() {
                   }}
                 />
               ) : (
-                <Lab />
+                <>
+                  <Lab />
+                  <div className="page-content">
+                    <MeasurementProfile start={() => start("spatial")} />
+                  </div>
+                </>
               )}
             </motion.section>
           </AnimatePresence>

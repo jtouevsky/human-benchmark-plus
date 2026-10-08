@@ -1,5 +1,6 @@
 "use client";
-import { motion, useReducedMotion } from "framer-motion";
+import { useClientReducedMotion as useReducedMotion } from "./use-client-reduced-motion";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
   Play,
@@ -14,6 +15,9 @@ import {
   Layers,
 } from "lucide-react";
 import Radar from "./radar";
+import { MeasurementProfile } from "./measurement-panel";
+import MeasurementHistory from "./measurement-history";
+import MeasurementResult from "./measurement-result";
 import SceneLoader from "./scene-loader";
 import { DataRibbon, GlassSurface } from "./experience";
 import { Progression } from "./field-system";
@@ -108,15 +112,16 @@ export function Library({
       <div className="method-note">
         <Orbit size={20} />
         <p>
-          Difficulty responds to accuracy and pace. Your next visit begins near
-          your last measured level. Spatial rotation uses protocol 03; other
-          core tasks use 02. Original results are preserved in History.
+          Spatial difficulty maximizes expected information. Other tests respond
+          to accuracy and pace. Your next visit begins near your last measured
+          level. Spatial now uses Bayesian protocol 04; other core tasks use 02.
+          Original results are preserved in History.
         </p>
       </div>
     </div>
   );
 }
-export function Profile({
+function LegacyProfile({
   results,
   start,
   demo,
@@ -331,7 +336,7 @@ export function Trend({
     </div>
   );
 }
-export function HistoryView({
+function LegacyHistoryView({
   results,
   start,
   onOpenSession,
@@ -497,15 +502,26 @@ export function HistoryView({
                         </b>
                       </span>
                       <span>
-                        Estimated percentile <b>{ordinal(result.percentile)}</b>
+                        {result.protocolVersion === 4 ? (
+                          <>
+                            Posterior θ{" "}
+                            <b>{Number(result.metadata.theta).toFixed(2)}</b>
+                          </>
+                        ) : (
+                          <>
+                            Illustrative legacy percentile{" "}
+                            <b>{ordinal(result.percentile)}</b>
+                          </>
+                        )}
                       </span>
                       <span>
                         Next difficulty{" "}
                         <b>{result.metadata.nextLevel || "Not recorded"}</b>
                       </span>
                       <small>
-                        Simulated percentile. Difficulty and timing influence
-                        each task differently.
+                        Legacy scores are illustrative. Bayesian spatial trials
+                        have no percentile. Difficulty and timing influence each
+                        task differently.
                       </small>
                     </motion.div>
                   )}
@@ -547,7 +563,7 @@ function Count({ value }: { value: number }) {
   }, [value, reduced]);
   return <>{n}</>;
 }
-export function Results({
+function LegacyResults({
   result,
   previous,
   onRetry,
@@ -858,5 +874,30 @@ export function SessionReport({
         </button>
       </div>
     </motion.div>
+  );
+}
+
+export function Profile(props: {
+  results: TestResult[];
+  start: () => void;
+  demo: boolean;
+}) {
+  return <MeasurementProfile start={props.start} />;
+}
+export function Results(props: Parameters<typeof LegacyResults>[0]) {
+  return props.result.protocolVersion === 4 &&
+    props.result.testType === "spatial" ? (
+    <MeasurementResult {...props} />
+  ) : (
+    <LegacyResults {...props} />
+  );
+}
+
+export function HistoryView(props: Parameters<typeof LegacyHistoryView>[0]) {
+  return (
+    <>
+      <MeasurementHistory />
+      <LegacyHistoryView {...props} />
+    </>
   );
 }

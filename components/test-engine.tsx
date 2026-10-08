@@ -30,6 +30,7 @@ import {
 import TestGlyph from "./test-glyph";
 import VoxelShape from "./voxel-shape";
 import { spatial3Question, transform } from "@/lib/spatial";
+import AdaptiveSpatial from "./adaptive-spatial";
 import { useDialog } from "./use-dialog";
 type Props = {
   type: TestType;
@@ -41,6 +42,12 @@ type Props = {
 };
 export default function TestEngine(p: Props) {
   const [started, setStarted] = useState(false);
+  useEffect(() => {
+    document.body.dataset.timing = p.type === "spatial" ? "false" : "true";
+    return () => {
+      delete document.body.dataset.timing;
+    };
+  }, []);
   const ref = useDialog(p.onExit);
   const t = tests.find((t) => t.id === p.type)!;
   return (
@@ -64,7 +71,7 @@ export default function TestEngine(p: Props) {
           {p.sessionLabel || "INDIVIDUAL EXPERIMENT"}
         </span>
         <span className="protocol-label">
-          PROTOCOL {p.type === "spatial" ? "03" : "02"}
+          PROTOCOL {p.type === "spatial" ? "04" : "02"}
         </span>
       </div>
       {p.sessionLabel && (
@@ -90,7 +97,7 @@ export default function TestEngine(p: Props) {
                   ? "Ten adaptive calculations: fractions, percentages, multi-step arithmetic, and more. Correct, fast answers move you up sooner. Type your answer and press Enter."
                   : "Mentally rotate a three-dimensional block assembly. Find the same object from a new orientation among mirrors and subtly altered structures. Ten adaptive rounds; up to six choices. Hidden blocks still belong to the object."}
           </p>
-          {p.type !== "reaction" && (
+          {p.type !== "reaction" && p.type !== "spatial" && (
             <div className="starting-level">
               <span>Starting difficulty</span>
               <b>
@@ -99,9 +106,7 @@ export default function TestEngine(p: Props) {
               </b>
               <span>
                 {p.previous.some(
-                  (r) =>
-                    r.testType === p.type &&
-                    r.protocolVersion === (p.type === "spatial" ? 3 : 2),
+                  (r) => r.testType === p.type && r.protocolVersion === 2,
                 )
                   ? "From your recent performance"
                   : "Initial calibration"}
@@ -126,7 +131,7 @@ export default function TestEngine(p: Props) {
       ) : p.type === "math" ? (
         <MathTest {...p} />
       ) : (
-        <Spatial {...p} />
+        <AdaptiveSpatial onFinish={p.onFinish} />
       )}
     </motion.div>
   );
@@ -250,10 +255,8 @@ function Reaction({ onFinish, previous }: Props) {
       set("wait");
       timer.current = setTimeout(
         () => {
-          frame.current = requestAnimationFrame(() => {
-            flushSync(() => set("go"));
-            start.current = performance.now();
-          });
+          flushSync(() => set("go"));
+          start.current = performance.now();
         },
         1400 + Math.random() * 3600,
       );
